@@ -127,3 +127,8 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+ppt/*
+screenshots/*
+spreadsheet.json
+get_serps_info/log/*
