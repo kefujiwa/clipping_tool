@@ -85,17 +85,26 @@ def search_all_rank(ssl):
             ritem['title'] = site_title
         except Exception as err:
             ritem['title'] = 'Unrecognized'
+
+        today = datetime.datetime.now()
+        date = item.select('span.r0bn4c.rQMQod')[0].text
+        if re.search(r'時間前', date):
+            ritem['date'] = today.strftime('%Y-%m-%d')
+        elif re.search(r'日前', date):
+            ritem['date'] = (today - datetime.timedelta(int(re.match(r'\d+', date).group()))).strftime('%Y-%m-%d')
+        else:
+            ritem['date'] = re.match(r'\d{4}/\d{2}/\d{2}', date).group().replace('/', '-') if re.match(r'\d{4}/\d{2}/\d{2}', date) else None
         ranking[f'{rank}'] = ritem
         rank += 1
     while rank <= 100:
-        ranking[f'{rank}'] = {'url': None, 'title': None}
+        ranking[f'{rank}'] = {'url': None, 'title': None, 'date': None}
         rank += 1
     return ranking
 
-def search_ranking_browser(driver, kw):
+def search_ranking_browser(driver, kw, date):
     try:
         # Googleから検索結果ページを取得する
-        url = f'https://www.google.co.jp/search?hl=ja&num=100&q={kw}'
+        url = f'https://www.google.co.jp/search?hl=ja&num=100&q={kw}+after:{date}'
         driver.get(url)
 
         sleep(random.randint(1, 2))
@@ -159,7 +168,7 @@ def search_metadata(driver, data, logger, index, size, trial):
                 trial = 0
                 sleep(1)
             except TimeoutException:
-                logger.debug(f'\t\tTimeout: {trial + 1} time')
+                logger.debug(f'\t\tTimeout: {trial + 5} time')
                 driver.close()
                 driver.switch_to.window(driver.window_handles[0])
                 sleep(1)

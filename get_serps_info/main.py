@@ -5,6 +5,7 @@ import json
 import datetime
 import requests
 import gspread
+from time import sleep
 from urllib.parse import urlparse
 from oauth2client.service_account import ServiceAccountCredentials
 
@@ -51,7 +52,8 @@ def get_initial_data(gc):
                 exists = True
                 projects.append({
                     'sheet': p,
-                    'keyword': d[1]
+                    'keyword': d[1],
+                    'date': d[2] if d[2] else '2000-01-01'
                 })
                 break
         if not exists:
@@ -60,7 +62,8 @@ def get_initial_data(gc):
             present.append(new)
             projects.append({
                 'sheet': new,
-                'keyword': d[1]
+                'keyword': d[1],
+                'date': d[2] if d[2] else '2000-01-01'
             })
 
     order = []
@@ -81,7 +84,7 @@ def get_url_list(sheet):
         yield f'{urlparse(u).hostname}{urlparse(u).path}'
 
 
-def write_data(sheet, data, day):
+def write_data(sheet, data):
     last_row = int(sheet.acell('C1').value) + 3
 
     output = []
@@ -95,7 +98,7 @@ def write_data(sheet, data, day):
         output.append([
             '=ROW()-2',
             f"=VLOOKUP(\"{d['domain']}\", Media!A1:B, 2, FALSE)",
-            day,
+            d['date'],
             d['url'],
             d['titlelink'],
             d['title'],
@@ -123,7 +126,7 @@ if __name__ == '__main__':
             logger.info(f"{i}: {p['sheet'].title}")
             url_list = list(get_url_list(p['sheet']))
 
-            res = search_ranking_browser(driver, p['keyword'])
+            res = search_ranking_browser(driver, p['keyword'], p['date'])
             if not res:
                 continue
 
@@ -135,6 +138,7 @@ if __name__ == '__main__':
                 if u and not u in url_list:
                     data.append({
                         'keyword': p['keyword'],
+                        'date': v['date'],
                         'url': v['url'],
                         'domain': urlparse(v['url']).hostname,
                         'titlelink': v['title']
@@ -143,7 +147,7 @@ if __name__ == '__main__':
 
             index, output = search_metadata(driver, data, logger, 0, len(data), 0)
             if len(output) > 0:
-                write_data(p['sheet'], output, today.strftime("%Y-%m-%d"))
+                write_data(p['sheet'], output)
 
         os.remove(f'log/{today.strftime("%Y-%m-%d")}_result.log')
         driver.close()
